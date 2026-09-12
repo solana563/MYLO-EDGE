@@ -1,0 +1,74 @@
+{
+  "id": "/?source=pwa",
+  "name": "MYLO Edge — Find your market edge",
+  "short_name": "MYLO Edge",
+  "description": "Market intelligence, research consensus, risk analysis, backtesting and paper trading for traders who want a clearer view of the market.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "background_color": "#090a09",
+  "theme_color": "#090a09",
+  "color_scheme": "dark",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["finance", "business", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/mylo-edge-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/mylo-edge-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/mylo-edge-icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/mylo-edge-icon-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Markets",
+      "short_name": "Markets",
+      "url": "/?source=pwa#/markets",
+      "description": "Explore markets and instruments with market context attached.",
+      "icons": [{ "src": "/icons/mylo-edge-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Signals",
+      "short_name": "Signals",
+      "url": "/?source=pwa#/signals",
+      "description": "Monitor structured signals and study historical outcomes.",
+      "icons": [{ "src": "/icons/mylo-edge-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Research",
+      "short_name": "Research",
+      "url": "/?source=pwa#/research",
+      "description": "Understand the bull case, the bear case and the consensus.",
+      "icons": [{ "src": "/icons/mylo-edge-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Sign in",
+      "short_name": "Sign in",
+      "url": "/?source=pwa#/login",
+      "description": "Sign in to your MYLO Edge account.",
+      "icons": [{ "src": "/icons/mylo-edge-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}
