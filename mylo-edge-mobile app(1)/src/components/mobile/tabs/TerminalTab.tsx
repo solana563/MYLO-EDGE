@@ -1,21 +1,60 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, ArrowDownRight, Layers, ShieldCheck, Activity } from "lucide-react";
 import { useMobileApp } from "../MobileAppContext";
-import { ASSETS, makeCandles } from "../../../data/demo";
+import { ASSETS } from "../../../data/demo";
 import { CandleChart } from "../../charts/CandleChart";
+import { marketService, type Candle, type IndicatorSnapshot } from "../../../services/market";
 
 const TIMEFRAMES = ["1H", "4H", "1D", "1W"] as const;
 
 export function TerminalTab() {
   const { selectedAsset, setSelectedAsset, setIsTradeSheetOpen, setTradeSide } = useMobileApp();
   const [activeTimeframe, setActiveTimeframe] = useState<string>("1H");
+  const [candles, setCandles] = useState<Candle[]>([]);
+  const [indicators, setIndicators] = useState<IndicatorSnapshot | null>(null);
+  const [dataStatus, setDataStatus] = useState<"loading" | "ready" | "error">("loading");
 
-  const candles = useMemo(
-    () => makeCandles(selectedAsset.seed, selectedAsset.base, selectedAsset.drift, selectedAsset.vol, 48),
-    [selectedAsset]
-  );
+  useEffect(() => {
+    let active = true;
 
-  const isUp = selectedAsset.change >= 0;
+    async function loadData() {
+      try {
+        setDataStatus("loading");
+        const [marketCandles, marketIndicators] = await Promise.all([
+          marketService.getCandles(selectedAsset.symbol, activeTimeframe, 60),
+          marketService.getIndicators(selectedAsset.symbol, activeTimeframe),
+        ]);
+        if (!active) return;
+        setCandles(marketCandles);
+        setIndicators(marketIndicators);
+        setDataStatus("ready");
+      } catch (error) {
+        if (!active) return;
+        setCandles([]);
+        setIndicators(null);
+        setDataStatus("error");
+      }
+    }
+
+    loadData();
+    return () => {
+      active = false;
+    };
+  }, [selectedAsset.symbol, activeTimeframe]);
+
+  const displayPrice = useMemo(() => {
+    if (!candles.length) return selectedAsset.price;
+    return candles[candles.length - 1].close.toFixed(2);
+  }, [candles, selectedAsset.price]);
+
+  const displayChange = useMemo(() => {
+    if (!candles.length) return selectedAsset.change;
+    const first = candles[0].close;
+    const last = candles[candles.length - 1].close;
+    return Number((((last - first) / first) * 100).toFixed(2));
+  }, [candles, selectedAsset.change]);
+
+  const isUp = displayChange >= 0;
 
   return (
     <div className="space-y-3 pb-24">
@@ -53,7 +92,7 @@ export function TerminalTab() {
           <div className="text-right">
             <div className="flex items-baseline justify-end gap-1.5">
               <span className="num text-2xl font-extrabold text-white">
-                ${selectedAsset.price}
+                ${displayPrice}
               </span>
             </div>
             <span
@@ -63,7 +102,7 @@ export function TerminalTab() {
             >
               {isUp ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
               {isUp ? "+" : ""}
-              {selectedAsset.change}%
+              {displayChange}%
             </span>
           </div>
         </div>
@@ -100,7 +139,17 @@ export function TerminalTab() {
 
         {/* Candlestick Chart View */}
         <div className="mt-2 overflow-hidden py-1">
-          <CandleChart candles={candles} height={210} />
+          {dataStatus === "error" ? (
+            <div className="flex h-[210px] items-center justify-center rounded-xl border border-white/10 bg-black/20 text-center text-xs text-ink-muted">
+              Market data temporarily unavailable.
+            </div>
+          ) : candles.length ? (
+            <CandleChart candles={candles} height={210} />
+          ) : (
+            <div className="flex h-[210px] items-center justify-center rounded-xl border border-white/10 bg-black/20 text-xs text-ink-muted">
+              Loading market data…
+            </div>
+          )}
         </div>
 
         {/* Chart Legend / Levels */}
@@ -134,14 +183,16 @@ export function TerminalTab() {
           </div>
 
           <div className="text-right">
-            <span className="num text-xl font-bold text-edge">{selectedAsset.edge}</span>
+            <span className="num text-xl font-bold text-edge">{indicators?.rsi ? Math.round(indicators.rsi) : selectedAsset.edge}</span>
             <span className="text-[10px] text-ink-faint"> /100 EDGE</span>
           </div>
         </div>
 
         <div className="mt-3 flex items-center gap-2 text-[11px] text-ink-muted">
           <ShieldCheck className="h-3.5 w-3.5 text-edge" />
-          <span>Risk evaluated as {selectedAsset.risk.toLowerCase()} on this timeframe.</span>
+          <span>
+            {indicators ? `Trend: ${indicators.trend.toLowerCase()} · Momentum: ${indicators.momentum.toLowerCase()}` : `Risk evaluated as ${selectedAsset.risk.toLowerCase()} on this timeframe.`}
+          </span>
         </div>
       </div>
 
