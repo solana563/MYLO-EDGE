@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     macro_api_key: str | None = Field(default=None, alias="MACRO_API_KEY")
     tradingagents_provider: str = Field(default="local", alias="TRADINGAGENTS_PROVIDER")
     tradingagents_api_key: str | None = Field(default=None, alias="TRADINGAGENTS_API_KEY")
+    tradingagents_version: str = Field(default="v0.2.0", alias="TRADINGAGENTS_VERSION")
+    tradingagents_source_path: str | None = Field(default=None, alias="TRADINGAGENTS_SOURCE_PATH")
+    tradingagents_llm_provider: Literal["openai", "google", "anthropic", "xai", "openrouter", "ollama"] = Field(default="openai", alias="TRADINGAGENTS_LLM_PROVIDER")
+    tradingagents_deep_model: str = Field(default="gpt-5.2", alias="TRADINGAGENTS_DEEP_MODEL")
+    tradingagents_quick_model: str = Field(default="gpt-5-mini", alias="TRADINGAGENTS_QUICK_MODEL")
+    tradingagents_backend_url: str | None = Field(default=None, alias="TRADINGAGENTS_BACKEND_URL")
+    tradingagents_max_debate_rounds: int = Field(default=1, ge=1, le=5, alias="TRADINGAGENTS_MAX_DEBATE_ROUNDS")
+    tradingagents_max_risk_rounds: int = Field(default=1, ge=1, le=5, alias="TRADINGAGENTS_MAX_RISK_ROUNDS")
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 

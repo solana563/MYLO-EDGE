@@ -100,3 +100,20 @@ class ApiError(BaseModel):
     code: str
     message: str
     details: str | None = None
+
+
+class RiskSizingRequest(BaseModel):
+    account_balance: float = Field(gt=0)
+    risk_percent: float = Field(gt=0, le=100)
+    entry: float = Field(gt=0)
+    stop: float = Field(gt=0)
+    max_exposure_percent: float | None = Field(default=None, gt=0, le=100)
+
+
+class PaperOrderRequest(BaseModel):
+    cash: float = Field(ge=0)
+    symbol: str = Field(min_length=1, max_length=32)
+    side: Literal["BUY", "SELL"]
+    quantity: float = Field(gt=0)
+    price: float = Field(gt=0)
+    fee_rate: float = Field(default=0, ge=0, le=1)

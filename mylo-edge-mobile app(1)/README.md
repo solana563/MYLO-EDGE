@@ -1,14 +1,14 @@
-# MYLO EDGE — Public Website
+# MYLO EDGE — Market Intelligence Terminal
 
 **Find your market edge.**
 
-The public marketing and product-education layer for MYLO Edge, a market-intelligence and paper-trading platform. The authenticated MYLO Edge terminal is a separate application.
+The MYLO Edge web application is a market-intelligence and paper-trading terminal. Public marketing/demo pages have been removed; the root route opens the terminal directly.
 
 ---
 
 ## Stack
 
-The existing repository is a **React 19 + Vite 7 + TypeScript + Tailwind CSS v4** project that builds to a single inlined `dist/index.html` (`vite-plugin-singlefile`). The site is implemented against that toolchain rather than Next.js, but the route contract, component boundaries and metadata layer are structured so the marketing pages can be moved into a Next.js App Router (`/app/(marketing)/...`) without rewriting components.
+The existing repository is a **React 19 + Vite 7 + TypeScript + Tailwind CSS v4** project that builds to a single inlined `dist/index.html` (`vite-plugin-singlefile`).
 
 - `lucide-react` — icons
 - `framer-motion` — scroll reveals, flow animation
@@ -37,7 +37,7 @@ src/
     auth-links.ts     callback URL construction and credential-safe URL parsing
     auth-callback.ts  single-use PKCE/email callback exchange
   data/
-    demo.ts           ALL simulated demo datasets (clearly labelled in the UI)
+    demo.ts           UI fallback/demo datasets, clearly labelled in the UI
     pricing.ts        configurable pricing tiers (no invented prices)
   components/
     ui/               Button, Panel, Section, SectionHeading, Badge, DemoTag,
@@ -46,7 +46,6 @@ src/
     auth/             shared accessible account forms and feedback
     charts/           CandleChart, EquityCurve, Sparkline
     product-demos/    TerminalPreview, InteractiveDemo
-    marketing/        Hero, Narrative, Evidence, Products, Company sections
   pages/
     Home.tsx, Pages.tsx (product pages), Legal.tsx, Auth.tsx, Account.tsx, Errors.tsx
 public/
@@ -92,7 +91,7 @@ Because `web-dir` points at the existing `dist/`, no application code changes ar
 
 ## Routes
 
-Marketing: `/`, `/how-it-works`, `/markets`, `/signals`, `/research`, `/backtesting`, `/paper-trading`, `/pricing`, `/about`, `/resources`, `/contact`, `/install`
+Terminal: `/`, `/app`, `/markets`, `/terminal`, `/signals`, `/portfolio`, `/install`
 
 Supabase Auth: `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/verify-email`, `/auth/callback`, `/onboarding`
 

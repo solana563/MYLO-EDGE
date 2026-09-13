@@ -8,6 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.engine import build_analysis
 from app.models import ApiError, IndicatorSnapshot, MarketAnalysis, MarketHealth, Quote
+from app.models import PaperOrderRequest, RiskSizingRequest
+from app.paper import PaperAccount, PaperBroker
+from app.research import get_research_adapter
+from app.risk import size_position
 from app.services.market_data import get_market_data_provider
 from app.technical import adx, atr, bollinger_bands, ema, macd, momentum_from_rsi, rsi, trend_from_emas, vwap, volatility_from_atr
 
@@ -118,6 +122,24 @@ def api_health() -> MarketHealth:
         market_data_provider=settings.market_data_provider,
         timestamp=datetime.utcnow(),
     )
+
+
+@app.get("/api/v1/research/{symbol:path}")
+def get_research(symbol: str, analysis_date: str | None = None):
+    from datetime import date
+    requested_date = date.fromisoformat(analysis_date) if analysis_date else date.today()
+    return get_research_adapter().run(symbol, requested_date)
+
+
+@app.post("/api/v1/risk/position-size")
+def calculate_position_size(request: RiskSizingRequest):
+    return size_position(request.account_balance, request.risk_percent, request.entry, request.stop, request.max_exposure_percent)
+
+
+@app.post("/api/v1/paper/orders")
+def place_paper_order(request: PaperOrderRequest):
+    account = PaperAccount(cash=request.cash, fee_rate=request.fee_rate)
+    return PaperBroker(account).place_market_order(request.symbol, request.side, request.quantity, request.price)
 
 
 @app.get("/api/v1/analysis/{symbol}", response_model=MarketAnalysis)

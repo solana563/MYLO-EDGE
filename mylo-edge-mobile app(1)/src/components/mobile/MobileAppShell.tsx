@@ -160,7 +160,7 @@ export function MobileAppShell() {
           </div>
           <div className="flex items-center gap-3">
             <a
-              href="#/web"
+              href="#/"
               className="text-[11px] font-medium text-ink-muted hover:text-white"
             >
               Web Overview

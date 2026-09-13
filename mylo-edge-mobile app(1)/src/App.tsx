@@ -2,19 +2,6 @@ import { useEffect } from "react";
 import { RouterProvider, useRouter } from "./lib/router";
 import { AuthProvider } from "./lib/auth";
 import { applyMeta, injectStructuredData } from "./lib/seo";
-import { Navbar } from "./components/navigation/Navbar";
-import { Footer } from "./components/navigation/Footer";
-import Home from "./pages/Home";
-import {
-  AboutPage,
-  BacktestingPage,
-  ContactPage,
-  HowItWorksPage,
-  PaperTradingPage,
-  PricingPage,
-  ResearchPage,
-  ResourcesPage,
-} from "./pages/Pages";
 import { LEGAL_DOCS, LegalPage } from "./pages/Legal";
 import { AuthCallbackPage, AuthPage, ResetPasswordPage, VerifyEmailPage } from "./pages/Auth";
 import { OnboardingPage } from "./pages/Account";
@@ -32,35 +19,7 @@ const KNOWN = new Set([
   "/terminal",
   "/signals",
   "/portfolio",
-  "/web",
-  "/how-it-works",
-  "/research",
-  "/backtesting",
-  "/paper-trading",
-  "/pricing",
-  "/about",
-  "/resources",
-  "/contact",
   "/install",
-  "/login",
-  "/signup",
-  "/forgot-password",
-  "/reset-password",
-  "/auth/callback",
-  "/verify-email",
-  "/onboarding",
-  "/500",
-  "/offline",
-]);
-
-// Standalone routes render without the website's desktop header & marketing footer
-const STANDALONE = new Set([
-  "/",
-  "/app",
-  "/markets",
-  "/terminal",
-  "/signals",
-  "/portfolio",
   "/login",
   "/signup",
   "/forgot-password",
@@ -82,24 +41,6 @@ function renderRoute(path: string) {
     case "/signals":
     case "/portfolio":
       return <MobileAppShell />;
-    case "/web":
-      return <Home />;
-    case "/how-it-works":
-      return <HowItWorksPage />;
-    case "/research":
-      return <ResearchPage />;
-    case "/backtesting":
-      return <BacktestingPage />;
-    case "/paper-trading":
-      return <PaperTradingPage />;
-    case "/pricing":
-      return <PricingPage />;
-    case "/about":
-      return <AboutPage />;
-    case "/resources":
-      return <ResourcesPage />;
-    case "/contact":
-      return <ContactPage />;
     case "/install":
       return <InstallPage />;
     case "/login":
@@ -153,27 +94,9 @@ function Shell() {
     injectStructuredData();
   }, []);
 
-  const isKnown = KNOWN.has(path) || Boolean(LEGAL_DOCS[path]);
-  const standalone = STANDALONE.has(path) || !isKnown;
-
-  if (standalone) {
-    return (
-      <>
-        <main id="main">{renderRoute(path)}</main>
-        <AppRuntime />
-      </>
-    );
-  }
-
   return (
     <>
-      <div className="flex min-h-screen flex-col">
-        <Navbar />
-        <main id="main" className="flex-1">
-          {renderRoute(path)}
-        </main>
-        <Footer />
-      </div>
+      <main id="main">{renderRoute(path)}</main>
       <AppRuntime />
     </>
   );
