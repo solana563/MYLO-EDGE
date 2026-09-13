@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import {
   Home,
   BarChart2,
@@ -8,8 +7,6 @@ import {
   Bell,
   User,
   Search,
-  Wifi,
-  BatteryMedium,
   Smartphone,
   Maximize2,
 } from "lucide-react";
@@ -34,20 +31,6 @@ export function MobileAppShell() {
     viewMode,
     setViewMode,
   } = useMobileApp();
-
-  const [currentTime, setCurrentTime] = useState("9:41");
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
-      );
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -77,27 +60,7 @@ export function MobileAppShell() {
   // Mobile App Core UI (Content inside the phone or full screen)
   const appContent = (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#090a09] text-white select-none">
-      {/* 1. Native Status Bar */}
-      <div className="pt-safe flex shrink-0 items-center justify-between px-6 pt-2 pb-1 text-xs font-semibold text-white">
-        <span className="num tracking-tight">{currentTime}</span>
-
-        {/* Dynamic Island pill */}
-        <div className="flex h-5 w-24 items-center justify-center rounded-full bg-black/90 px-2 shadow-inner">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-edge pulse-dot" />
-            <span className="text-[9px] font-bold text-edge tracking-wider">MYLO</span>
-          </div>
-        </div>
-
-        {/* Status icons */}
-        <div className="flex items-center gap-1.5 text-white">
-          <span className="text-[10px] font-bold">5G</span>
-          <Wifi className="h-3 w-3" />
-          <BatteryMedium className="h-4 w-4 text-edge" />
-        </div>
-      </div>
-
-      {/* 2. Native Mobile Header */}
+      {/* Native Mobile Header */}
       <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-2.5 border-b border-white/5">
         {/* User profile avatar */}
         <button
@@ -218,52 +181,10 @@ export function MobileAppShell() {
     );
   }
 
-  // Desktop Device Frame View (iPhone 16 Pro mockup)
+  // Full-bleed native app view without fake phone hardware chrome
   return (
-    <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-[#070807] px-4 py-8">
-      {/* Ambient background glows */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/2 h-[500px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-edge/[0.04] blur-[120px]" />
-      </div>
-
-      {/* Top Floating Switcher Pill on desktop */}
-      <div className="mb-5 flex items-center gap-3 rounded-full border border-white/10 bg-[#121513]/90 px-4 py-1.5 text-xs shadow-xl backdrop-blur-md">
-        <div className="flex items-center gap-1.5 text-white">
-          <Smartphone className="h-4 w-4 text-edge" />
-          <span className="font-semibold">MYLO Edge Native App</span>
-        </div>
-        <span className="text-white/20">|</span>
-        <button
-          onClick={() => setViewMode("fullscreen")}
-          className="flex items-center gap-1 text-[11px] font-medium text-ink-muted hover:text-white"
-        >
-          <Maximize2 className="h-3 w-3" />
-          <span>Full View</span>
-        </button>
-        <span className="text-white/20">|</span>
-        <a
-          href="#/web"
-          className="flex items-center gap-1 text-[11px] font-medium text-ink-muted hover:text-edge transition-colors"
-        >
-          <span>Web View</span>
-        </a>
-      </div>
-
-      {/* iPhone 16 Pro Hardware Shell */}
-      <div className="relative h-[844px] w-[390px] overflow-hidden rounded-[52px] border-[6px] border-[#222724] bg-black p-2 shadow-[0_25px_80px_-20px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.1)] ring-1 ring-white/10">
-        {/* Glass reflection highlight on side */}
-        <div className="pointer-events-none absolute -top-40 -left-40 h-[600px] w-[300px] rotate-45 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent" />
-
-        {/* Screen Bezel container */}
-        <div className="relative h-full w-full overflow-hidden rounded-[44px]">
-          {appContent}
-        </div>
-      </div>
-
-      {/* Sub-label */}
-      <p className="mt-4 text-[11px] text-ink-faint">
-        Responsive native interface · Touch-optimized for iOS & Android
-      </p>
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#090a09]">
+      <div className="flex-1 overflow-hidden">{appContent}</div>
     </div>
   );
 }
