@@ -15,21 +15,22 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### Optional TradingAgents setup
 
-The integration is disabled by default. To enable the verified Tauric Research
-`v0.2.0` adapter, install its optional dependency set and configure the selected
-LLM provider without committing credentials:
+The verified Tauric Research `v0.2.0` adapter is configured for OpenRouter by
+default. Install its optional dependency set and configure the local key without
+committing credentials:
 
 ```bash
 pip install -r requirements-tradingagents.txt
 cp .env.example .env
-# Set TRADINGAGENTS_PROVIDER=tradingagents
-# Set TRADINGAGENTS_LLM_PROVIDER=openai (or google, anthropic, xai, openrouter, ollama)
-# Set the matching provider key, for example OPENAI_API_KEY, in your local .env
+# Set TRADINGAGENTS_PROVIDER=openrouter
+# Set OPENROUTER_API_KEY to your local key
 # If the package build does not expose its source, clone the official repo and set
 # TRADINGAGENTS_SOURCE_PATH=/absolute/path/to/TradingAgents
 ```
 
-TradingAgents reads provider credentials from its standard environment variable.
+TradingAgents connects to OpenRouter through its OpenAI-compatible endpoint at
+`https://openrouter.ai/api/v1` using `OPENROUTER_API_KEY`. The configured free
+models are used for deep and quick thinking respectively.
 MYLO only returns its structured decision summary; private agent transcripts are
 not exposed by the API. If the package or selected provider credential is absent,
 the research endpoint returns `UNAVAILABLE`.

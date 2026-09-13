@@ -27,7 +27,7 @@ class TradingResearchAdapter(Protocol):
 
 class UnavailableResearchAdapter:
     def run(self, symbol: str, analysis_date: date) -> ResearchReport:
-        return ResearchReport(symbol, "UNAVAILABLE", (), (), (), (), "Research engine unavailable", "UNAVAILABLE", "tradingagents", datetime.utcnow())
+        return ResearchReport(symbol, "UNAVAILABLE", (), (), (), (), "Research engine unavailable", "UNAVAILABLE", "TradingAgents", datetime.utcnow())
 
 
 class TradingAgentsAdapter:
@@ -39,8 +39,15 @@ class TradingAgentsAdapter:
     def run(self, symbol: str, analysis_date: date) -> ResearchReport:
         provider = self.config["llm_provider"]
         key_name = {"openai": "OPENAI_API_KEY", "google": "GOOGLE_API_KEY", "anthropic": "ANTHROPIC_API_KEY", "xai": "XAI_API_KEY", "openrouter": "OPENROUTER_API_KEY"}.get(provider)
-        if key_name and not os.getenv(key_name):
+        provider_key = self.config.get("api_key") or (os.getenv(key_name) if key_name else None)
+        if key_name and not provider_key:
             return UnavailableResearchAdapter().run(symbol, analysis_date)
+        if key_name and provider_key:
+            os.environ[key_name] = provider_key
+            if provider == "openrouter":
+                # TradingAgents v0.2.0 routes OpenRouter through ChatOpenAI;
+                # this alias supports client versions that read OpenAI's key.
+                os.environ["OPENAI_API_KEY"] = provider_key
         source_path = self.config.get("source_path")
         if source_path and source_path not in sys.path:
             sys.path.insert(0, source_path)
@@ -51,21 +58,26 @@ class TradingAgentsAdapter:
             return UnavailableResearchAdapter().run(symbol, analysis_date)
         config = DEFAULT_CONFIG.copy()
         config.update(self.config)
-        graph = TradingAgentsGraph(config=config)
-        state, decision = graph.propagate(symbol, analysis_date.isoformat())
+        try:
+            graph = TradingAgentsGraph(config=config)
+            state, decision = graph.propagate(symbol, analysis_date.isoformat())
+        except Exception:
+            return UnavailableResearchAdapter().run(symbol, analysis_date)
         return ResearchReport(symbol, "STRUCTURED", (), (), (), (), str(decision), "AVAILABLE", f"TradingAgents {self.config['version']}", datetime.utcnow())
 
 
 def get_research_adapter() -> TradingResearchAdapter:
     from app.config import get_settings
     settings = get_settings()
-    if settings.tradingagents_provider != "tradingagents":
+    provider = settings.tradingagents_provider.lower()
+    if provider not in {"tradingagents", "openrouter"}:
         return UnavailableResearchAdapter()
     return TradingAgentsAdapter({
         "project_dir": ".",
         "version": settings.tradingagents_version,
         "source_path": settings.tradingagents_source_path,
-        "llm_provider": settings.tradingagents_llm_provider,
+        "llm_provider": "openrouter" if provider == "openrouter" else settings.tradingagents_llm_provider,
+        "api_key": settings.openrouter_api_key if provider == "openrouter" else settings.tradingagents_api_key,
         "deep_think_llm": settings.tradingagents_deep_model,
         "quick_think_llm": settings.tradingagents_quick_model,
         "backend_url": settings.tradingagents_backend_url,

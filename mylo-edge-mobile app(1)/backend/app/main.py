@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.engine import build_analysis
@@ -151,5 +152,6 @@ def get_analysis(symbol: str, timeframe: str = "1H") -> MarketAnalysis:
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request, exc):
-    return ApiError(code="internal_error", message="An internal server error occurred.", details=str(exc))
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    request_id = request.headers.get("x-request-id", "unassigned")
+    return JSONResponse(status_code=500, content=ApiError(code="internal_error", message="An internal server error occurred.", details=request_id).model_dump())
