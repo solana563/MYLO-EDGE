@@ -44,6 +44,39 @@ class IndicatorSnapshot(BaseModel):
     updated_at: datetime
 
 
+class ScoreComponents(BaseModel):
+    technical: int
+    momentum: int
+    news: int | None = None
+    sentiment: int | None = None
+    fundamentals: int | None = None
+    macro: int | None = None
+    liquidity: int | None = None
+    risk: int | None = None
+
+
+class MarketAnalysis(BaseModel):
+    symbol: str
+    timeframe: str
+    quote: Quote
+    indicators: IndicatorSnapshot
+    regime: str
+    regime_reason: str
+    edge_score: int | None = None
+    score_label: str | None = None
+    score_components: ScoreComponents
+    signal: Literal["STRONG BUY", "BUY", "HOLD", "SELL", "STRONG SELL", "UNAVAILABLE"]
+    risk: Literal["LOW", "MEDIUM", "HIGH", "UNAVAILABLE"]
+    entry_zone: dict[str, float] | None = None
+    invalidation: float | None = None
+    target_1: float | None = None
+    target_2: float | None = None
+    risk_reward: float | None = None
+    research_status: Literal["PENDING", "AVAILABLE", "UNAVAILABLE"] = "PENDING"
+    data_health: Literal["LIVE", "DELAYED", "STALE", "OFFLINE", "DEMO"]
+    generated_at: datetime
+
+
 class MarketAsset(BaseModel):
     symbol: str
     name: str

@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Literal
 
+import httpx
+
 from app.models import Candle, MarketAsset, Quote
 
 
@@ -91,5 +93,55 @@ class LocalMarketDataProvider(MarketDataProvider):
         return "DEMO"
 
 
+class CryptoMarketDataProvider(MarketDataProvider):
+    ids = {"BTC/USD": "bitcoin", "ETH/USD": "ethereum"}
+
+    def _id(self, symbol: str) -> str:
+        if symbol not in self.ids:
+            raise ValueError(f"Unsupported crypto symbol: {symbol}")
+        return self.ids[symbol]
+
+    def _market_chart(self, symbol: str) -> dict:
+        response = httpx.get(
+            f"https://api.coingecko.com/api/v3/coins/{self._id(symbol)}/market_chart",
+            params={"vs_currency": "usd", "days": 30, "interval": "hourly"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_asset(self, symbol: str) -> MarketAsset:
+        chart = self._market_chart(symbol)
+        price = float(chart["prices"][-1][1])
+        previous = float(chart["prices"][0][1])
+        return MarketAsset(symbol=symbol, name=self._id(symbol).title(), exchange="COINGECKO", price=price,
+                           change_pct=(price - previous) / previous * 100, market_status="LIVE")
+
+    def get_quote(self, symbol: str) -> Quote:
+        asset = self.get_asset(symbol)
+        return Quote(symbol=symbol, name=asset.name, price=asset.price or 0,
+                     previous_close=(asset.price or 0) / (1 + (asset.change_pct or 0) / 100),
+                     change_pct=asset.change_pct, status="LIVE", source="coingecko", last_updated=datetime.utcnow())
+
+    def get_candles(self, symbol: str, timeframe: str = "1H", limit: int = 120) -> list[Candle]:
+        chart = self._market_chart(symbol)
+        volumes = {int(point[0]): float(point[1]) for point in chart.get("total_volumes", [])}
+        prices = chart["prices"][-limit:]
+        candles: list[Candle] = []
+        for index, point in enumerate(prices):
+            timestamp_ms, close = int(point[0]), float(point[1])
+            previous = float(prices[index - 1][1]) if index else close
+            candles.append(Candle(timestamp=datetime.utcfromtimestamp(timestamp_ms / 1000), open=previous,
+                                  high=max(previous, close), low=min(previous, close), close=close,
+                                  volume=volumes.get(timestamp_ms, 0)))
+        return candles
+
+    def get_market_status(self, symbol: str) -> Literal["LIVE", "DELAYED", "STALE", "OFFLINE", "DEMO"]:
+        return "LIVE"
+
+
 def get_market_data_provider() -> MarketDataProvider:
+    from app.config import get_settings
+    if get_settings().market_data_provider == "crypto":
+        return CryptoMarketDataProvider()
     return LocalMarketDataProvider()

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Candle } from "../../data/demo";
+import type { Candle } from "../../services/market";
 
 function ema(values: number[], period: number) {
   const k = 2 / (period + 1);
@@ -32,11 +32,11 @@ export function CandleChart({
     const padR = 62;
     const volH = 38;
     const priceH = height - volH - 10;
-    const closes = candles.map((c) => c.c);
+    const closes = candles.map((c) => c.close);
     const e12 = ema(closes, 12);
     const e26 = ema(closes, 26);
-    const hi = Math.max(...candles.map((c) => c.h));
-    const lo = Math.min(...candles.map((c) => c.l));
+    const hi = Math.max(...candles.map((c) => c.high));
+    const lo = Math.min(...candles.map((c) => c.low));
     const span = hi - lo || 1;
     const pad = span * 0.08;
     const top = hi + pad;
@@ -46,14 +46,14 @@ export function CandleChart({
     const bw = Math.max(1.5, step * 0.56);
     const y = (p: number) => ((top - p) / (top - bot)) * priceH + 4;
     const x = (i: number) => padL + i * step + step / 2;
-    const maxV = Math.max(...candles.map((c) => c.v));
+    const maxV = Math.max(...candles.map((c) => c.volume));
 
     const line = (arr: number[]) =>
       arr.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
 
-    const last = candles[candles.length - 1].c;
+    const last = candles[candles.length - 1].close;
     const entryIdx = Math.floor(candles.length * 0.62);
-    const entry = candles[entryIdx].c;
+    const entry = candles[entryIdx].close;
     const invalidation = lo + span * 0.08;
     const target = hi - span * 0.02;
 
@@ -71,7 +71,7 @@ export function CandleChart({
       viewBox={`0 0 ${width} ${height}`}
       className="h-auto w-full"
       role="img"
-      aria-label="Simulated price chart with candlesticks, EMA lines, volume and risk markers"
+      aria-label="Market price chart with candlesticks, EMA lines, volume and risk markers"
     >
       <defs>
         <linearGradient id="volgrad" x1="0" y1="0" x2="0" y2="1">
@@ -95,13 +95,13 @@ export function CandleChart({
 
       {/* candles */}
       {candles.map((c, i) => {
-        const up = c.c >= c.o;
+        const up = c.close >= c.open;
         const col = up ? "#3fbf7f" : "#e0574d";
-        const yO = y(c.o);
-        const yC = y(c.c);
+        const yO = y(c.open);
+        const yC = y(c.close);
         return (
           <g key={i} opacity={0.95}>
-            <line x1={x(i)} x2={x(i)} y1={y(c.h)} y2={y(c.l)} stroke={col} strokeWidth="1" opacity="0.75" />
+            <line x1={x(i)} x2={x(i)} y1={y(c.high)} y2={y(c.low)} stroke={col} strokeWidth="1" opacity="0.75" />
             <rect
               x={x(i) - bw / 2}
               y={Math.min(yO, yC)}
@@ -135,7 +135,7 @@ export function CandleChart({
 
       {/* volume */}
       {candles.map((c, i) => {
-        const h = (c.v / maxV) * (volH - 6);
+        const h = (c.volume / maxV) * (volH - 6);
         return (
           <rect
             key={`v${i}`}

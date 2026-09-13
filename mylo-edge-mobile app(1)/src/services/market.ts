@@ -38,6 +38,28 @@ export type IndicatorSnapshot = {
   updated_at: string;
 };
 
+export type MarketAnalysis = {
+  symbol: string;
+  timeframe: string;
+  quote: MarketQuote;
+  indicators: IndicatorSnapshot;
+  regime: string;
+  regime_reason: string;
+  edge_score: number | null;
+  score_label: string | null;
+  score_components: { technical: number; momentum: number; news: number | null; sentiment: number | null; fundamentals: number | null; macro: number | null; liquidity: number | null; risk: number | null };
+  signal: "STRONG BUY" | "BUY" | "HOLD" | "SELL" | "STRONG SELL" | "UNAVAILABLE";
+  risk: "LOW" | "MEDIUM" | "HIGH" | "UNAVAILABLE";
+  entry_zone: { low: number; high: number } | null;
+  invalidation: number | null;
+  target_1: number | null;
+  target_2: number | null;
+  risk_reward: number | null;
+  research_status: "PENDING" | "AVAILABLE" | "UNAVAILABLE";
+  data_health: MarketStatus;
+  generated_at: string;
+};
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 async function fetchJson<T>(input: string): Promise<T> {
@@ -56,4 +78,6 @@ export const marketService = {
     fetchJson<Candle[]>(`/api/v1/candles/${encodeURIComponent(symbol)}?timeframe=${encodeURIComponent(timeframe)}&limit=${limit}`),
   getIndicators: (symbol: string, timeframe = "1H") =>
     fetchJson<IndicatorSnapshot>(`/api/v1/indicators/${encodeURIComponent(symbol)}?timeframe=${encodeURIComponent(timeframe)}`),
+  getAnalysis: (symbol: string, timeframe = "1H") =>
+    fetchJson<MarketAnalysis>(`/api/v1/analysis/${encodeURIComponent(symbol)}?timeframe=${encodeURIComponent(timeframe)}`),
 };

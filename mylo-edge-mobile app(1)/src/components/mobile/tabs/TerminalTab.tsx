@@ -3,7 +3,7 @@ import { ArrowUpRight, ArrowDownRight, Layers, ShieldCheck, Activity } from "luc
 import { useMobileApp } from "../MobileAppContext";
 import { ASSETS } from "../../../data/demo";
 import { CandleChart } from "../../charts/CandleChart";
-import { marketService, type Candle, type IndicatorSnapshot } from "../../../services/market";
+import { marketService, type Candle, type MarketAnalysis } from "../../../services/market";
 
 const TIMEFRAMES = ["1H", "4H", "1D", "1W"] as const;
 
@@ -11,7 +11,7 @@ export function TerminalTab() {
   const { selectedAsset, setSelectedAsset, setIsTradeSheetOpen, setTradeSide } = useMobileApp();
   const [activeTimeframe, setActiveTimeframe] = useState<string>("1H");
   const [candles, setCandles] = useState<Candle[]>([]);
-  const [indicators, setIndicators] = useState<IndicatorSnapshot | null>(null);
+  const [analysis, setAnalysis] = useState<MarketAnalysis | null>(null);
   const [dataStatus, setDataStatus] = useState<"loading" | "ready" | "error">("loading");
 
   useEffect(() => {
@@ -20,18 +20,18 @@ export function TerminalTab() {
     async function loadData() {
       try {
         setDataStatus("loading");
-        const [marketCandles, marketIndicators] = await Promise.all([
+        const [marketCandles, marketAnalysis] = await Promise.all([
           marketService.getCandles(selectedAsset.symbol, activeTimeframe, 60),
-          marketService.getIndicators(selectedAsset.symbol, activeTimeframe),
+          marketService.getAnalysis(selectedAsset.symbol, activeTimeframe),
         ]);
         if (!active) return;
         setCandles(marketCandles);
-        setIndicators(marketIndicators);
+        setAnalysis(marketAnalysis);
         setDataStatus("ready");
       } catch (error) {
         if (!active) return;
         setCandles([]);
-        setIndicators(null);
+        setAnalysis(null);
         setDataStatus("error");
       }
     }
@@ -43,16 +43,20 @@ export function TerminalTab() {
   }, [selectedAsset.symbol, activeTimeframe]);
 
   const displayPrice = useMemo(() => {
+    if (analysis?.quote.price) return analysis.quote.price.toFixed(2);
     if (!candles.length) return selectedAsset.price;
     return candles[candles.length - 1].close.toFixed(2);
-  }, [candles, selectedAsset.price]);
+  }, [analysis, candles, selectedAsset.price]);
 
   const displayChange = useMemo(() => {
+    if (analysis?.quote.change_pct !== null && analysis?.quote.change_pct !== undefined) {
+      return Number(analysis.quote.change_pct.toFixed(2));
+    }
     if (!candles.length) return selectedAsset.change;
     const first = candles[0].close;
     const last = candles[candles.length - 1].close;
     return Number((((last - first) / first) * 100).toFixed(2));
-  }, [candles, selectedAsset.change]);
+  }, [analysis, candles, selectedAsset.change]);
 
   const isUp = displayChange >= 0;
 
@@ -178,12 +182,12 @@ export function TerminalTab() {
             </div>
             <div>
               <p className="text-xs font-bold text-white">Market Regime</p>
-              <p className="num text-[10px] text-ink-muted">{selectedAsset.regime}</p>
+              <p className="num text-[10px] text-ink-muted">{analysis?.regime ?? "ANALYSIS PENDING"}</p>
             </div>
           </div>
 
           <div className="text-right">
-            <span className="num text-xl font-bold text-edge">{indicators?.rsi ? Math.round(indicators.rsi) : selectedAsset.edge}</span>
+            <span className="num text-xl font-bold text-edge">{analysis?.edge_score ?? "--"}</span>
             <span className="text-[10px] text-ink-faint"> /100 EDGE</span>
           </div>
         </div>
@@ -191,7 +195,7 @@ export function TerminalTab() {
         <div className="mt-3 flex items-center gap-2 text-[11px] text-ink-muted">
           <ShieldCheck className="h-3.5 w-3.5 text-edge" />
           <span>
-            {indicators ? `Trend: ${indicators.trend.toLowerCase()} · Momentum: ${indicators.momentum.toLowerCase()}` : `Risk evaluated as ${selectedAsset.risk.toLowerCase()} on this timeframe.`}
+            {analysis ? `${analysis.signal} · ${analysis.risk} risk · ${analysis.research_status === "PENDING" ? "Research pending" : "Research available"}` : "Analysis unavailable."}
           </span>
         </div>
       </div>

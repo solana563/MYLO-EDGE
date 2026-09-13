@@ -6,7 +6,8 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.models import ApiError, IndicatorSnapshot, MarketHealth, Quote
+from app.engine import build_analysis
+from app.models import ApiError, IndicatorSnapshot, MarketAnalysis, MarketHealth, Quote
 from app.services.market_data import get_market_data_provider
 from app.technical import adx, atr, bollinger_bands, ema, macd, momentum_from_rsi, rsi, trend_from_emas, vwap, volatility_from_atr
 
@@ -117,6 +118,14 @@ def api_health() -> MarketHealth:
         market_data_provider=settings.market_data_provider,
         timestamp=datetime.utcnow(),
     )
+
+
+@app.get("/api/v1/analysis/{symbol}", response_model=MarketAnalysis)
+def get_analysis(symbol: str, timeframe: str = "1H") -> MarketAnalysis:
+    provider = get_market_data_provider()
+    quote = provider.get_quote(symbol)
+    candles = provider.get_candles(symbol, timeframe=timeframe, limit=200)
+    return build_analysis(symbol, timeframe, quote, candles)
 
 
 @app.exception_handler(Exception)
