@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     cors_origins: str = Field(default="http://localhost:5173", alias="CORS_ORIGINS")
     market_data_provider: str = Field(default="local", alias="MARKET_DATA_PROVIDER")
     market_data_api_key: str | None = Field(default=None, alias="MARKET_DATA_API_KEY")
+    market_data_stale_after_seconds: int = Field(default=900, ge=1, alias="MARKET_DATA_STALE_AFTER_SECONDS")
     news_provider: str = Field(default="local", alias="NEWS_PROVIDER")
     news_api_key: str | None = Field(default=None, alias="NEWS_API_KEY")
     fundamentals_provider: str = Field(default="local", alias="FUNDAMENTALS_PROVIDER")

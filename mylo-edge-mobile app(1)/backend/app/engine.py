@@ -23,7 +23,15 @@ def _regime(indicators: IndicatorSnapshot, candles: list[Candle]) -> tuple[str, 
     return "RANGE", "EMA structure is not directional"
 
 
-def build_analysis(symbol: str, timeframe: str, quote: Quote, candles: list[Candle]) -> MarketAnalysis:
+def build_analysis(
+    symbol: str,
+    timeframe: str,
+    quote: Quote,
+    candles: list[Candle],
+    provider: str | None = None,
+    latest_candle: datetime | None = None,
+    received_at: datetime | None = None,
+) -> MarketAnalysis:
     closes = [c.close for c in candles]
     candle_dicts = [{"high": c.high, "low": c.low, "close": c.close, "volume": c.volume} for c in candles]
     ema_9, ema_21, ema_50, ema_200 = (ema(closes, period)[-1] if closes else None for period in (9, 21, 50, 200))
@@ -49,4 +57,12 @@ def build_analysis(symbol: str, timeframe: str, quote: Quote, candles: list[Cand
     data_health = "DEMO" if quote.status == "DEMO" else quality.status
     return MarketAnalysis(symbol=symbol, timeframe=timeframe, quote=quote, indicators=indicators, regime=regime, regime_reason=reason,
         edge_score=edge_score, score_label="Developing" if edge_score is not None else None, score_components=components,
-        signal=signal, risk=risk, data_health=data_health, generated_at=datetime.utcnow())
+        signal=signal,
+        risk=risk,
+        data_health=data_health,
+        provider=provider or quote.source,
+        latest_candle=latest_candle or (candles[-1].timestamp if candles else None),
+        received_at=received_at,
+        score_version="1.0",
+        generated_at=datetime.utcnow(),
+    )

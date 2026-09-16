@@ -2,19 +2,26 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
+from app.data_quality import validate_candles
+from app.database import get_db
 from app.engine import build_analysis
+from app.ingestion import MarketDataIngestionService
 from app.models import ApiError, IndicatorSnapshot, MarketAnalysis, MarketHealth, Quote
 from app.models import PaperOrderRequest, RiskSizingRequest
 from app.paper import PaperAccount, PaperBroker
+from app.repository import CandleRepository
 from app.research import get_research_adapter
 from app.risk import size_position
 from app.services.market_data import get_market_data_provider
-from app.technical import adx, atr, bollinger_bands, ema, macd, momentum_from_rsi, rsi, trend_from_emas, vwap, volatility_from_atr
+from app.technical import adx, atr, ema, macd, momentum_from_rsi, rsi, trend_from_emas, vwap, volatility_from_atr
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+import redis
 
 settings = get_settings()
 app = FastAPI(title="MYLO Edge API", version="0.1.0")
@@ -40,13 +47,28 @@ def health_live() -> dict:
 
 @app.get("/health/ready")
 def health_ready() -> dict:
-    return {
-        "status": "ready",
-        "database": "not-configured",
-        "redis": "not-configured",
-        "market_data_provider": settings.market_data_provider,
-        "timestamp": datetime.utcnow().isoformat(),
-    }
+    checks = {"database": "unavailable", "redis": "unavailable", "provider": "unavailable", "migrations": "unknown"}
+    try:
+        from app.database import engine
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+            revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one_or_none()
+        checks["database"] = "healthy"
+        checks["migrations"] = "current" if revision == "0001_market_foundation" else "not_current"
+    except Exception:
+        pass
+    try:
+        redis.Redis.from_url(settings.redis_url, socket_connect_timeout=1, socket_timeout=1).ping()
+        checks["redis"] = "healthy"
+    except Exception:
+        pass
+    try:
+        get_market_data_provider().get_asset("BTC/USD")
+        checks["provider"] = "healthy"
+    except Exception:
+        pass
+    ready = all(value in {"healthy", "current"} for value in checks.values())
+    return {"status": "ready" if ready else "not_ready", **checks, "timestamp": datetime.utcnow().isoformat()}
 
 
 @app.get("/api/v1/markets")
@@ -66,16 +88,26 @@ def get_quote(symbol: str) -> Quote:
     return provider.get_quote(symbol)
 
 
-@app.get("/api/v1/candles/{symbol}")
-def get_candles(symbol: str, timeframe: str = "1H", limit: int = Query(default=120, ge=10, le=500)):
-    provider = get_market_data_provider()
-    return provider.get_candles(symbol, timeframe=timeframe, limit=limit)
+@app.post("/api/v1/ingestion/{symbol:path}")
+def ingest_market_data(symbol: str, timeframe: str = "1H", limit: int = Query(default=120, ge=1, le=500), db: Session = Depends(get_db)):
+    result = MarketDataIngestionService(get_market_data_provider(), CandleRepository(db)).ingest(symbol, timeframe, limit)
+    if result.status == "OFFLINE":
+        raise HTTPException(status_code=503, detail=result.__dict__)
+    return result
 
 
-@app.get("/api/v1/indicators/{symbol}")
-def get_indicators(symbol: str, timeframe: str = "1H") -> IndicatorSnapshot:
-    provider = get_market_data_provider()
-    candles = provider.get_candles(symbol, timeframe=timeframe, limit=200)
+@app.get("/api/v1/candles/{symbol:path}")
+def get_candles(symbol: str, timeframe: str = "1H", limit: int = Query(default=120, ge=1, le=500), db: Session = Depends(get_db)):
+    records = CandleRepository(db).get_recent(symbol, timeframe, limit)
+    if not records:
+        raise HTTPException(status_code=404, detail="No persisted candle data available")
+    return [record.candle for record in records]
+
+
+@app.get("/api/v1/indicators/{symbol:path}")
+def get_indicators(symbol: str, timeframe: str = "1H", db: Session = Depends(get_db)) -> IndicatorSnapshot:
+    records = CandleRepository(db).get_recent(symbol, timeframe, limit=200)
+    candles = [record.candle for record in records]
     closes = [c.close for c in candles]
     if not closes:
         raise HTTPException(status_code=404, detail="No candle data available")
@@ -95,6 +127,9 @@ def get_indicators(symbol: str, timeframe: str = "1H") -> IndicatorSnapshot:
     momentum = momentum_from_rsi(indicator_rsi)
     volatility = volatility_from_atr(indicator_atr)
 
+    quality = validate_candles(candles, settings.market_data_stale_after_seconds)
+    source = records[-1].source
+    data_health = "DEMO" if source == "local" else quality.status
     return IndicatorSnapshot(
         symbol=symbol,
         timeframe=timeframe,
@@ -110,6 +145,7 @@ def get_indicators(symbol: str, timeframe: str = "1H") -> IndicatorSnapshot:
         trend=trend,
         momentum=momentum,
         volatility=volatility,
+        data_health=data_health,
         updated_at=datetime.utcnow(),
     )
 
@@ -143,12 +179,26 @@ def place_paper_order(request: PaperOrderRequest):
     return PaperBroker(account).place_market_order(request.symbol, request.side, request.quantity, request.price)
 
 
-@app.get("/api/v1/analysis/{symbol}", response_model=MarketAnalysis)
-def get_analysis(symbol: str, timeframe: str = "1H") -> MarketAnalysis:
-    provider = get_market_data_provider()
-    quote = provider.get_quote(symbol)
-    candles = provider.get_candles(symbol, timeframe=timeframe, limit=200)
-    return build_analysis(symbol, timeframe, quote, candles)
+@app.get("/api/v1/analysis/{symbol:path}", response_model=MarketAnalysis)
+def get_analysis(symbol: str, timeframe: str = "1H", db: Session = Depends(get_db)) -> MarketAnalysis:
+    records = CandleRepository(db).get_recent(symbol, timeframe, limit=200)
+    if not records:
+        raise HTTPException(status_code=404, detail="No persisted candle data available")
+    candles = [record.candle for record in records]
+    latest = records[-1]
+    quality = validate_candles(candles, settings.market_data_stale_after_seconds)
+    status = "DEMO" if latest.source == "local" else quality.status
+    quote = Quote(
+        symbol=symbol,
+        name=symbol,
+        price=latest.candle.close,
+        previous_close=candles[-2].close if len(candles) > 1 else None,
+        change_pct=((latest.candle.close - candles[-2].close) / candles[-2].close * 100) if len(candles) > 1 else None,
+        status=status,
+        source=latest.source,
+        last_updated=latest.candle.timestamp,
+    )
+    return build_analysis(symbol, timeframe, quote, candles, latest.source, latest.candle.timestamp, latest.received_at)
 
 
 @app.exception_handler(Exception)

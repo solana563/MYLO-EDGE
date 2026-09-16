@@ -41,6 +41,7 @@ class IndicatorSnapshot(BaseModel):
     trend: str = "NEUTRAL"
     momentum: str = "NEUTRAL"
     volatility: str = "MEDIUM"
+    data_health: Literal["LIVE", "DELAYED", "STALE", "OFFLINE", "DEMO", "UNAVAILABLE"] = "UNAVAILABLE"
     updated_at: datetime
 
 
@@ -73,7 +74,11 @@ class MarketAnalysis(BaseModel):
     target_2: float | None = None
     risk_reward: float | None = None
     research_status: Literal["PENDING", "AVAILABLE", "UNAVAILABLE"] = "PENDING"
-    data_health: Literal["LIVE", "DELAYED", "STALE", "OFFLINE", "DEMO"]
+    data_health: Literal["LIVE", "DELAYED", "STALE", "OFFLINE", "DEMO", "UNAVAILABLE"]
+    provider: str | None = None
+    latest_candle: datetime | None = None
+    received_at: datetime | None = None
+    score_version: str = "1.0"
     generated_at: datetime
 
 
